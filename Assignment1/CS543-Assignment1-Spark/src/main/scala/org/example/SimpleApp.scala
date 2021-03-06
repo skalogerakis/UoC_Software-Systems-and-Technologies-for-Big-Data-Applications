@@ -1,15 +1,10 @@
 package org.example
 
-import org.apache.hadoop.yarn.util.RackResolver
 import org.apache.spark.{SparkConf, SparkContext}
 import org.apache.spark.rdd.RDD
-import org.apache.spark.sql.SparkSession
-
 import scala.util.matching.Regex
-//import org.apache.spark.sql.SparkSession
 
 case class Log (host: String, date: String, requestURI: String, status: Int, bytes: Int)
-case class LogT (host: String, date: String, status: Int)
 
 object SimpleApp {
   def main(args: Array[String]) {
@@ -18,25 +13,17 @@ object SimpleApp {
 //    https://sparkbyexamples.com/spark/sparksession-vs-sparkcontext/?fbclid=IwAR15guKOla8APJa3paaFCNbmfkRRhVp_Il_tOo9F005XpECpj2m1R-uGXkU
     val spark = new SparkContext(new SparkConf().setAppName("SimpleApp").setMaster("local[*]"))
 
-    val baseRdd = spark.textFile("/home/skalogerakis/Projects/CS543/Assignment1/CS543-Assignment1-Spark/NASA_access_log_Jul95")
+    val baseRdd = spark.textFile("/home/skalogerakis/Documents/NASA_access_log_Jul95")
     println("Sanity check for baseRDD: "+baseRdd.count())
-    //    val patternHost = """^([^\s]+\s)""".r
-//    val patternTime = """^.*\[(\d\d/\w{3}/\d{4}:\d{2}:\d{2}:\d{2} -\d{4})]""".r
-//    val patternRequest = """^.*"\w+\s+([^\s]+)\s*.*"""".r
-//    val patternStatus = """^.*"\s+([^\s]+)""".r
-//    val patternBytes = """^.*\s+(\d+)$""".r
-//    val printRdd = baseRdd.map( x => getLogFields(x))
-//    print(printRdd.count())
+
+    //Problematic initial effort
+//    val splitRDD = baseRdd.map(x => getLogFields(x))
+//    print(splitRDD.count())
 
     //BadRDD finder
 //    val badRDD = baseRdd.filter(x => patternBytes.findFirstIn(x) == None)
 //    print(badRDD.count())
 //    badRDD.take(15).foreach(println)
-
-//    val badRdd = splitRDD.filter(x => findFirstIn(x) == None)
-//    badRdd.count
-//    badRdd.take(3)
-//    print(splitRDD.count())
 
 
     val cleanRDD = convertToLog(baseRdd).persist()

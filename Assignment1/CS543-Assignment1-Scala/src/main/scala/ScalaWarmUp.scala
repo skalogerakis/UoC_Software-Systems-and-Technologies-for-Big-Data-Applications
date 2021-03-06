@@ -8,6 +8,8 @@ object ScalaWarmUp {
     val y = List(1)
     val z = List()
     val text = List("c","c","b","a","s")
+//    val text = List("c")
+
     val substringC = List("absc","abfdsg","asfxzcvf")
 
     val tmpTests = List(")",")","(","(")
@@ -19,9 +21,9 @@ object ScalaWarmUp {
 //    println(b)
 
 //    println("HEY "+getSecondToLast2(z))
-//      filterUnique(text)
+      filterUnique(text).foreach(print)
 //    print(getMostFrequentSubstring(substringC,2))
-    getMostFrequentSubstring(substringC,2)
+//    getMostFrequentSubstring(substringC,2)
 //    print(checkBalancedParentheses(tmpTest))
   }
 
@@ -60,29 +62,26 @@ object ScalaWarmUp {
 
   }
 
-  //TODO
-//  def filterUnique(l: List[String]): List[String] = {
-//  }
+  //DONE
+  def filterUnique(l: List[String]): List[String] = {
 
-  def filterUnique(l: List[String]): Unit = {
-
-
-    val tmp = l.foldRight[List[String]](Nil){
-      case (x,xs) => if(xs.isEmpty || xs.head != x) x :: xs else xs
-//      case (x,xs) => println(x+" _ "+xs);x :: xs
+    //In the case the list is empty throw error exception
+    if(l.isEmpty){
+      throw new NoSuchElementException
     }
-//    val tmp = l.reduceRight( (x,xs) => if(xs.isEmpty || xs.head != x) x :: xs else xs)
-//    val tmp = l.sliding(2).collect{
-//      case Seq(c1,c2) if c1 != c2 => c2
-//    })
-//    val tst = l.sliding(2).flatMap{
-//      case Seq(c1,c2) if c1 != c2 => c2
-//    }
-//    println(tst)
 
-//    tst.foreach( x=> println(x))
+    //Parse list from left to right. Function executes in the format (curElement,runningList). Start from an list containing the last element of the init list
+    val tmp = l.foldRight[List[String]](List(l.last)){
+      case (x,xs) if xs.head != x => x :: xs
+      case (x,xs) => xs
+      case _ => throw new NoSuchElementException
+    }.toList
+
+    return tmp
 
   }
+
+
   //DONE
   def getMostFrequentSubstring(lst: List[String], k: Int) = {
 
@@ -93,7 +92,7 @@ object ScalaWarmUp {
           str => str.sliding(k)
         }
       }
-        println(allSubstr)
+//        println(allSubstr)
 
     //GroupMapReduce combines group, map and reduce function as its name state.
     //The idea is very simple, group by the entries, map with value 1 and add(reduce) those elements together to get the frequency
@@ -135,33 +134,5 @@ object ScalaWarmUp {
 
   }
 
-//  def balance(lst: List[String]) : Boolean = {
-////    println("INIT"+lst)
-//
-//    val tmp  = 0 :: lst.map(el =>
-//      if(el.equals("(")) 1
-//      else if(el.equals(")")) -1
-//      else 0
-//    ).toList
-//
-//    print(tmp)
-//
-//    val prt = tmp.reduceLeft( (x,y) => (x,y) match {
-////      case (0,0) =>0
-//      case (0,-1) => 0
-//      case (x,-1) => x-1
-//      case (x,1) => x+1
-//      case (_,0) => x
-//      }
-//    )
-//
-//    println(prt)
-//
-//    if(prt == 0) true else false
-//
-//
-//
-//
-//  }
 
 }
