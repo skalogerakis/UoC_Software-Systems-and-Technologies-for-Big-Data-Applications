@@ -1,6 +1,7 @@
 package org.example
 
 import breeze.linalg.DenseVector
+import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.mllib.evaluation.RegressionMetrics
 import org.apache.spark.mllib.linalg
 import org.apache.spark.{SparkConf, SparkContext}
@@ -112,18 +113,23 @@ object codeSnippet {
 
 
     /*********   test lrgd *********/
-    val exampleN = 4
-    val exampleD = 3
-    val exampleData = spark.parallelize(trainData.take(exampleN)).map(lp => LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.slice(0, exampleD))))
-    val exampleNumIters = 50
-    val (exampleWeights, exampleErrorTrain) = lrgd(exampleData, exampleNumIters)
 
-    println("============3.3.5===============")
-    println("Iterations: "+exampleNumIters)
-    println("Weights: "+exampleWeights)
-    println("Error train: "+exampleErrorTrain)
 
-    println("============3.4===============")
+//
+//    val exampleN = 4
+//    val exampleD = 3
+//    val exampleData = spark.parallelize(trainData.take(exampleN)).map(lp => LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.slice(0, exampleD))))
+//    val exampleNumIters = 50
+//    val (exampleWeights, exampleErrorTrain) = lrgd(exampleData, exampleNumIters)
+//
+//    println("============3.3.5===============")
+//    println("Iterations: "+exampleNumIters)
+//    println("Weights: "+exampleWeights)
+//    println("Error train: "+exampleErrorTrain)
+//
+//    println("============3.4===============")
+
+
     //TODO
 
 //    val valiData = spark.parallelize(valData.take(exampleN)).map(lp => LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.slice(0, exampleD))))
@@ -146,14 +152,124 @@ object codeSnippet {
     val testDataDF = testData.map(lp => MLabeledPoint(lp.label, MLVectors.dense(lp.features.toArray))).toDF
     /*******************************************************************/
 
-    /******Linear Regression Demo*********/
-    val lr=new LinearRegression().setMaxIter(50).setRegParam(0.1).setFitIntercept(true)
-    val lrModel = lr.fit(trainDataDF)
-    lrModel.evaluate(valDataDF).rootMeanSquaredError
-    /***************************************/
 
+    /******Linear Regression Demo*********/
+    val lr=new LinearRegression().setMaxIter(50).setRegParam(0.1).setFitIntercept(true) //Initiates Linear Regression and fits model using 50 iter
+    val lrModel = lr.fit(trainDataDF)
+//    lrModel.evaluate(valDataDF).rootMeanSquaredError
+
+
+
+//    println("============4===============")
+//
+//    println("============4.1.1===============")
+//    println("Coefficients: " +lrModel.coefficients )
+//    println("Intercept: "+lrModel.intercept)
+//
+//    //?????
+//    println("============4.1.2===============")
+//    //TODO ASK IF THIS IS CORRECT????
+//    val rmseVal1 = lrModel.evaluate(valDataDF).rootMeanSquaredError
+//    println("RMSE on validation set: "+rmseVal1)
+//
+//    println("============4.1.3===============")
+//    println("Transformed validation set - First 10 predictions")
+//    lrModel.transform(valDataDF).show(10,false) //Transform validation set on existing model
+//
+//    println("============4.2===============")
+//
+//    println("============4.2.1===============")
+//
+//    //Simply change setRegParam property with the correspoind values and compare the results
+//    val lr_2 =new LinearRegression().setMaxIter(50).setRegParam(1e-10).setFitIntercept(true) //Initiates Linear Regression and fits model using 50 iter
+//    val lrModel_2 = lr_2.fit(trainDataDF)
+//    val rmseVal2 = lrModel_2.evaluate(valDataDF).rootMeanSquaredError
+//
+//    val lr_3 =new LinearRegression().setMaxIter(50).setRegParam(1e-5).setFitIntercept(true) //Initiates Linear Regression and fits model using 50 iter
+//    val lrModel_3 = lr_3.fit(trainDataDF)
+//    val rmseVal3 = lrModel_3.evaluate(valDataDF).rootMeanSquaredError
+//
+//    val lr_4 =new LinearRegression().setMaxIter(50).setRegParam(1).setFitIntercept(true) //Initiates Linear Regression and fits model using 50 iter
+//    val lrModel_4 = lr_4.fit(trainDataDF)
+//    val rmseVal4 = lrModel_4.evaluate(valDataDF).rootMeanSquaredError
+//
+//    println("RMSE comparison per regularization parameter")
+//    println("For regParam 0,1: "+rmseVal1)
+//    println("For regParam 1e-10: "+rmseVal2)
+//    println("For regParam 1e-5: "+rmseVal3)
+//    println("For regParam 1: "+rmseVal4)
+
+
+
+
+
+    println("============5===============")
+
+    //5.1 transform crossTrainDataRDD to DF
+    val crossTrainDataRDD = trainData.map(lp => quadFeatures(lp))
+    val crossTrainDataDF = crossTrainDataRDD.map(lp => MLabeledPoint(lp.label, MLVectors.dense(lp.features.toArray))).toDF  //As provided by assignment and used in section 4
+//    println("Sanity check for crossTrainDataDF: "+crossTrainDataDF.show(10))
+
+    //5.2 Now transform validation and tests in similar fashion
+    val crossValDataRDD = valData.map(lp => quadFeatures(lp))
+    val crossValDataDF = crossValDataRDD.map(lp => MLabeledPoint(lp.label, MLVectors.dense(lp.features.toArray))).toDF
+
+    val crossTestDataRDD = testData.map(lp => quadFeatures(lp))
+    val crossTestDataDF = crossTestDataRDD.map(lp => MLabeledPoint(lp.label, MLVectors.dense(lp.features.toArray))).toDF
+
+    val lr_final=new LinearRegression().setMaxIter(500).setRegParam(1e-10).setFitIntercept(true) //Initiates Linear Regression and fits model using 50 iter
+    val lrModel_final = lr_final.fit(crossTrainDataDF)
+
+
+    println("============5.4.1===============")
+    //5.3 Find the RMSE of the new model
+    println("New model RMSE: "+ lrModel_final.evaluate(crossValDataDF).rootMeanSquaredError)
+
+    //5.4
+    println("Baseline model RMSE: "+ calcRmse(predsNLabelsVal))
+
+    println("============5.4.2===============")
+    lrModel_final.transform(crossTestDataDF).select("prediction").show(50)
+
+
+    /**** Use of pipelines ******************************/
+    //Following the pipeline example https://spark.apache.org/docs/latest/ml-pipeline.html
+    import org.apache.spark.ml.feature.PolynomialExpansion
+    import org.apache.spark.ml.Pipeline
+    import org.apache.spark.ml.evaluation.RegressionEvaluator
+
+    val numIters = 500
+    val reg = 1e-10
+    val alpha = .2
+    val useIntercept = true
+    val polynomial_expansion = (new PolynomialExpansion).setInputCol("features").setOutputCol("polyFeatures").setDegree(2)
+    val lr3 = new LinearRegression()
+    lr3.setMaxIter(numIters).setRegParam(reg).setElasticNetParam(alpha).setFitIntercept(useIntercept).setFeaturesCol("polyFeatures")
+
+    val pipeline = new Pipeline()
+    pipeline.setStages(Array(polynomial_expansion,lr3)) //there are two stages here that you have to set.
+
+    //TODO ask about that as well
+    val model= pipeline.fit(trainDataDF) //need to fit. Use the train Dataframe
+    val predictionsDF=model.transform(testDataDF) //Produce predictions on the test set. Use method transform.
+    val evaluator = new RegressionEvaluator()
+    evaluator.setMetricName("rmse")
+    val rmseTestPipeline = evaluator.evaluate(predictionsDF)
+    println(rmseTestPipeline)
 
   }
+
+  /***** Quadratic Feature extraction for 5.1 ********/
+  implicit class Crossable[X](xs: Traversable[X]) {
+    def cross[Y](ys: Traversable[Y]) = for { x <- xs; y <- ys } yield (x, y)
+  }
+
+  def quadFeatures(lp: LabeledPoint) = {
+    val crossFeatures = lp.features.toArray.toList cross lp.features.toArray.toList
+    val sqFeatures = crossFeatures.map(x => x._1 * x._2).toArray
+    LabeledPoint(lp.label, Vectors.dense(sqFeatures))
+  }
+
 
   /*MODIFIED lrgd. The function takes as input an
     RDD of LabeledPoints and the number of Iterations and returns the model
