@@ -1,7 +1,6 @@
 package org.example
 
 import breeze.linalg.DenseVector
-import org.apache.spark.ml.evaluation.RegressionEvaluator
 import org.apache.spark.mllib.evaluation.RegressionMetrics
 import org.apache.spark.mllib.linalg
 import org.apache.spark.{SparkConf, SparkContext}
@@ -11,7 +10,6 @@ import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
 
-import org.apache.log4j.Level
 import org.apache.log4j.{Level, Logger}
 
 
@@ -40,7 +38,7 @@ object codeSnippet {
     println("\n\n============1.3===============")
 
 
-    //Keep everything in cache with cache, as we will use this again and again
+    //Keep everything in cache with persist, as we will use this again and again
     val parsePointsRdd = baseRdd.map(x=>inputToLabeled_1_3(x)).persist()
 
     println("\n\n============1.3.3===============")
@@ -131,26 +129,29 @@ object codeSnippet {
 
 
     // We change the code for 3.3.2. RMSE goes to infinity. Values for 3.3.2 can be found in the report. lrgd function changed for the purposes of 3.3.5
-    val exampleN = 4
-    val exampleD = 3
-    val exampleData = spark.parallelize(trainData.take(exampleN)).map(lp => LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.slice(0, exampleD))))
-    val exampleNumIters = 50
-    val (exampleWeights, exampleErrorTrain) = lrgd(exampleData, exampleNumIters)
+    //Example provided by assignment
+//    val exampleN = 4
+//    val exampleD = 3
+//    val exampleData = spark.parallelize(trainData.take(exampleN)).map(lp => LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.slice(0, exampleD))))
+//    val exampleNumIters = 50
+//    val (exampleWeights, exampleErrorTrain) = lrgd(exampleData, exampleNumIters)
+
+    val NumIters = 50
+    val (fWeights, exampleErrorTrain) = lrgd(trainData, NumIters)
 
     println("\n\n============3.3.5===============")
-    println("Iterations: "+exampleNumIters)
-    println("Weights: "+exampleWeights)
+    println("Iterations: "+NumIters)
+    println("Weights: "+fWeights)
     println("Error train: "+exampleErrorTrain.take(50))
 
 
     println("\n\n============3.4===============")
 
+    val predsNLabelsVals = valData.map(x => getLabeledPrediction(fWeights,x))
 
-    //TODO ask about that
-    val valiData = spark.parallelize(valData.take(exampleN)).map(lp => LabeledPoint(lp.label, Vectors.dense(lp.features.toArray.slice(0, exampleD))))
-    val predsNLabelsVals = valiData.map(x => ((new DenseVector(x.features.toArray) dot exampleWeights), x.label))
     val calc = calcRmse(predsNLabelsVals)
     println("RMSE on validation set = "+ calc)
+
 
     /************ Section 4 **********/
     /********** MLLib + grid search*****************************/
@@ -293,7 +294,7 @@ object codeSnippet {
   def lrgd(trData: RDD[LabeledPoint], numIter: Int): (DenseVector[Double], List[Double]) = {
     val n = trData.count
     val d = trData.first.features.size
-    val alpha = 0.01 //????????
+    val alpha = 0.01//????????
     println("Alpha Value: "+alpha)
     val errorTrain = new ListBuffer[Double]
     var weights = new DenseVector(Array.fill[Double](d)(0.0))
