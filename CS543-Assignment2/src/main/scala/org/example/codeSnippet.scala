@@ -127,7 +127,6 @@ object codeSnippet {
     //Validated 3.2 works as expected and returns a tuple of values
 //    println(getLabeledPrediction(example_w,example_lp))
 
-
     // We change the code for 3.3.2. RMSE goes to infinity. Values for 3.3.2 can be found in the report. lrgd function changed for the purposes of 3.3.5
     //Example provided by assignment
 //    val exampleN = 4
@@ -180,7 +179,6 @@ object codeSnippet {
     println("Coefficients: " +lrModel.coefficients )
     println("Intercept: "+lrModel.intercept)
 
-    //?????
     println("\n\n============4.1.2===============")
     //TODO ASK IF THIS IS CORRECT????
     val rmseVal1 = lrModel.evaluate(valDataDF).rootMeanSquaredError
@@ -294,7 +292,7 @@ object codeSnippet {
   def lrgd(trData: RDD[LabeledPoint], numIter: Int): (DenseVector[Double], List[Double]) = {
     val n = trData.count
     val d = trData.first.features.size
-    val alpha = 0.01//????????
+    val alpha = 0.01
     println("Alpha Value: "+alpha)
     val errorTrain = new ListBuffer[Double]
     var weights = new DenseVector(Array.fill[Double](d)(0.0))
@@ -311,6 +309,7 @@ object codeSnippet {
     (weights, errorTrain.toList)
   }
 
+  //Takes a dense vector of weights and a labeledPoint and returns (prediction,label)
   def getLabeledPrediction(weights: DenseVector[Double], lbl: LabeledPoint): (Double, Double) ={
     //Make prediction by computing the dot product between weights and the features of a labeled point
     val predTmp = weights.dot(DenseVector(lbl.features.toArray))
@@ -320,7 +319,6 @@ object codeSnippet {
     return (predTmp,lbl.label)
   }
 
-  //????????
   def gradientSummand(weights: DenseVector[Double], lp: LabeledPoint): DenseVector[Double] ={
     //Basically follow the example given to reproduce the correct result
     //gradient_summand = (dot([1 1 1], [3 1 4]) - 2) * [3 1 4] = (8 - 2) * [3 1 4] = [18 6 24]
