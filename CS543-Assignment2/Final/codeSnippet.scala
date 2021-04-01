@@ -1,4 +1,3 @@
-package org.example
 
 import breeze.linalg.DenseVector
 import org.apache.spark.mllib.evaluation.RegressionMetrics
@@ -9,26 +8,108 @@ import scala.util.{Success, Try}
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.regression.LabeledPoint
 import org.apache.spark.rdd.RDD
-import org.apache.log4j.{Level, Logger}
-import org.apache.spark.sql.SparkSession
+
+// import org.apache.log4j.{Level, Logger}
 
 
 
 
-object codeSnippet {
+  /***** Quadratic Feature extraction for 5.1 ********/
+  implicit class Crossable[X](xs: Traversable[X]) {
+    def cross[Y](ys: Traversable[Y]) = for { x <- xs; y <- ys } yield (x, y)
+  }
 
-  def main(args: Array[String]) {
-    //TODO at the end remove that. This removes debugging for better result view
-    Logger.getLogger("org").setLevel(Level.OFF)
-    Logger.getLogger("akka").setLevel(Level.OFF)
+  def quadFeatures(lp: LabeledPoint) = {
+    val crossFeatures = lp.features.toArray.toList cross lp.features.toArray.toList
+    val sqFeatures = crossFeatures.map(x => x._1 * x._2).toArray
+    LabeledPoint(lp.label, Vectors.dense(sqFeatures))
+  }
+
+
+  /*MODIFIED lrgd. The function takes as input an
+    RDD of LabeledPoints and the number of Iterations and returns the model
+    parameters, and the list of rmse for each iteration. Fill with code the
+    question marks (?) and debug.
+    */
+  import scala.collection.mutable.ListBuffer
+  def lrgd(trData: RDD[LabeledPoint], numIter: Int): (DenseVector[Double], List[Double]) = {
+    val n = trData.count
+    val d = trData.first.features.size
+    val alpha = 0.01
+    println("Alpha Value: "+alpha)
+    val errorTrain = new ListBuffer[Double]
+    var weights = new DenseVector(Array.fill[Double](d)(0.0))
+
+    for (i <- 0 until numIter){
+      val gradient = trData.map(x => gradientSummand(weights,x)).reduce(_+_) //Compute the gradientSummand and sum all the values together
+      val alpha_i = alpha / (n * Math.sqrt(i+1))
+      weights -= (alpha_i * gradient)//Weights change, following the equation. To compute w(i+1) we must use w(i)
+      //update errorTrain
+      val predsNLabelsTrain = trData.map(x => getLabeledPrediction(weights,x)) //convert the training set into an RDD of (predictions, labels). Use the function created previously
+      errorTrain += calcRmse(predsNLabelsTrain)
+      println("Iteration RMSE: "+calcRmse(predsNLabelsTrain))
+    }
+    (weights, errorTrain.toList)
+  }
+
+  //Takes a dense vector of weights and a labeledPoint and returns (prediction,label)
+  def getLabeledPrediction(weights: DenseVector[Double], lbl: LabeledPoint): (Double, Double) ={
+    //Make prediction by computing the dot product between weights and the features of a labeled point
+    val predTmp = weights.dot(DenseVector(lbl.features.toArray))
+//    println(predTmp)
+
+    //Return a tuple in scala
+    return (predTmp,lbl.label)
+  }
+
+  def gradientSummand(weights: DenseVector[Double], lp: LabeledPoint): DenseVector[Double] ={
+    //Basically follow the example given to reproduce the correct result
+    //gradient_summand = (dot([1 1 1], [3 1 4]) - 2) * [3 1 4] = (8 - 2) * [3 1 4] = [18 6 24]
+    //However, in order to use dot function without problem, LabelPoint features need casting in DenseVector[Double] otherwise the compiler complains
+    return (weights.dot(DenseVector(lp.features.toArray)) - lp.label) * DenseVector(lp.features.toArray)
+
+  }
+
+
+  //2.2 Takes input an RDD[Double, Double] and returns Double which corresponds to rootMeanSquaredError
+  def calcRmse(prd: RDD[(Double, Double)]): Double ={
+
+    val regressionMetrics = new RegressionMetrics(prd)
+//    println(s"RMSE = ${regressionMetrics.rootMeanSquaredError}")
+    regressionMetrics.rootMeanSquaredError
+
+  }
+
+  def inputToLabeled_1_3(str: String): LabeledPoint ={
+
+    //Could simply map(s=>s.toDouble) as we know that our dataset contains valid double values. To make everything bulletproof apply the idea in the link below.
+    // Check if our value can become double and only then convert it to double. Avoid exceptions
+    //    https://stackoverflow.com/questions/33848755/convert-a-scala-list-of-strings-into-a-list-of-doubles-while-discarding-unconver
+    val attrList = str.split(",").map( s => Try(s.toDouble) ).collect { case Success(x) => x }.toList
+//    val attrList = str.split(",").map( s => s.toDouble).toList
+
+//    println(attrList)
+
+    //Label is the first value(using head list function) and features are the rest(tail function takes all but first element)
+    LabeledPoint(attrList.head, Vectors.dense(attrList.tail.toArray))
+
+  }
+  
+  
+// object codeSnippet {
+// 
+//   def main(args: Array[String]) {
+//     Logger.getLogger("org").setLevel(Level.OFF)
+//     Logger.getLogger("akka").setLevel(Level.OFF)
+//     sc.setLogLevel("OFF")
 
     //As the link below states, spark-shell creates by default Spark Context so use that
     //    https://sparkbyexamples.com/spark/sparksession-vs-sparkcontext/?fbclid=IwAR15guKOla8APJa3paaFCNbmfkRRhVp_Il_tOo9F005XpECpj2m1R-uGXkU
-    val spark = new SparkContext(new SparkConf().setAppName("codeSnippets").setMaster("local[*]"))
+//     val spark = new SparkContext(new SparkConf().setAppName("codeSnippets").setMaster("local[*]"))
 
     /************ Section 1 **********/
 
-    val baseRdd = spark.textFile("/home/skalogerakis/Projects/CS543/CS543-Assignment2/hw2/dataset.csv")
+    val baseRdd = sc.textFile("/home/skalogerakis/Projects/CS543/CS543-Assignment2/hw2/dataset.csv")
 
     println("============1.2===============")
     println("Sanity check count for data points(baseRDD): " + baseRdd.count())
@@ -157,11 +238,14 @@ object codeSnippet {
     import org.apache.spark.ml.regression.LinearRegression
     import org.apache.spark.ml.linalg.{Vectors => MLVectors}
     import org.apache.spark.ml.feature.{LabeledPoint => MLabeledPoint}
-//    val sqlContext = new org.apache.spark.sql.SQLContext(spark)
+//     val sqlContext = new org.apache.spark.sql.SQLContext(sc)
+//     import sqlContext.implicits._
+//     val sqlContext = SparkSession.builder.getOrCreate()
 
+//     val sqlContext = spark.builder.getOrCreate()
+    import spark.implicits._
+    
 
-    val sqlContext = SparkSession.builder.getOrCreate()
-    import sqlContext.implicits._
 
 
     /*********************RDD conversion to Dataframe*****************/
@@ -271,90 +355,11 @@ object codeSnippet {
     val rmseTestPipeline = evaluator.evaluate(predictionsDF)
     println("RMSE final model test "+rmseTestPipeline)
 
-  }
-
-  /***** Quadratic Feature extraction for 5.1 ********/
-  implicit class Crossable[X](xs: Traversable[X]) {
-    def cross[Y](ys: Traversable[Y]) = for { x <- xs; y <- ys } yield (x, y)
-  }
-
-  def quadFeatures(lp: LabeledPoint) = {
-    val crossFeatures = lp.features.toArray.toList cross lp.features.toArray.toList
-    val sqFeatures = crossFeatures.map(x => x._1 * x._2).toArray
-    LabeledPoint(lp.label, Vectors.dense(sqFeatures))
-  }
-
-
-  /*MODIFIED lrgd. The function takes as input an
-    RDD of LabeledPoints and the number of Iterations and returns the model
-    parameters, and the list of rmse for each iteration. Fill with code the
-    question marks (?) and debug.
-    */
-  import scala.collection.mutable.ListBuffer
-  def lrgd(trData: RDD[LabeledPoint], numIter: Int): (DenseVector[Double], List[Double]) = {
-    val n = trData.count
-    val d = trData.first.features.size
-    val alpha = 0.01
-    println("Alpha Value: "+alpha)
-    val errorTrain = new ListBuffer[Double]
-    var weights = new DenseVector(Array.fill[Double](d)(0.0))
-
-    for (i <- 0 until numIter){
-      val gradient = trData.map(x => gradientSummand(weights,x)).reduce(_+_) //Compute the gradientSummand and sum all the values together
-      val alpha_i = alpha / (n * Math.sqrt(i+1))
-      weights -= (alpha_i * gradient)//Weights change, following the equation. To compute w(i+1) we must use w(i)
-      //update errorTrain
-      val predsNLabelsTrain = trData.map(x => getLabeledPrediction(weights,x)) //convert the training set into an RDD of (predictions, labels). Use the function created previously
-      errorTrain += calcRmse(predsNLabelsTrain)
-      println("Iteration RMSE: "+calcRmse(predsNLabelsTrain))
-    }
-    (weights, errorTrain.toList)
-  }
-
-  //Takes a dense vector of weights and a labeledPoint and returns (prediction,label)
-  def getLabeledPrediction(weights: DenseVector[Double], lbl: LabeledPoint): (Double, Double) ={
-    //Make prediction by computing the dot product between weights and the features of a labeled point
-    val predTmp = weights.dot(DenseVector(lbl.features.toArray))
-//    println(predTmp)
-
-    //Return a tuple in scala
-    return (predTmp,lbl.label)
-  }
-
-  def gradientSummand(weights: DenseVector[Double], lp: LabeledPoint): DenseVector[Double] ={
-    //Basically follow the example given to reproduce the correct result
-    //gradient_summand = (dot([1 1 1], [3 1 4]) - 2) * [3 1 4] = (8 - 2) * [3 1 4] = [18 6 24]
-    //However, in order to use dot function without problem, LabelPoint features need casting in DenseVector[Double] otherwise the compiler complains
-    return (weights.dot(DenseVector(lp.features.toArray)) - lp.label) * DenseVector(lp.features.toArray)
-
-  }
-
-
-  //2.2 Takes input an RDD[Double, Double] and returns Double which corresponds to rootMeanSquaredError
-  def calcRmse(prd: RDD[(Double, Double)]): Double ={
-
-    val regressionMetrics = new RegressionMetrics(prd)
-//    println(s"RMSE = ${regressionMetrics.rootMeanSquaredError}")
-    regressionMetrics.rootMeanSquaredError
-
-  }
-
-  def inputToLabeled_1_3(str: String): LabeledPoint ={
-
-    //Could simply map(s=>s.toDouble) as we know that our dataset contains valid double values. To make everything bulletproof apply the idea in the link below.
-    // Check if our value can become double and only then convert it to double. Avoid exceptions
-    //    https://stackoverflow.com/questions/33848755/convert-a-scala-list-of-strings-into-a-list-of-doubles-while-discarding-unconver
-    val attrList = str.split(",").map( s => Try(s.toDouble) ).collect { case Success(x) => x }.toList
-//    val attrList = str.split(",").map( s => s.toDouble).toList
-
-//    println(attrList)
-
-    //Label is the first value(using head list function) and features are the rest(tail function takes all but first element)
-    LabeledPoint(attrList.head, Vectors.dense(attrList.tail.toArray))
-
-  }
+//   }
 
 
 
 
-}
+
+// }
+ 
