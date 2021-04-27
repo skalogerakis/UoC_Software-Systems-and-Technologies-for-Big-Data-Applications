@@ -41,7 +41,8 @@ def main():
     word_index["<UNK>"] = 2
     word_index["<UNUSED>"] = 3
 
-    reverse_word_index = dict(
+    # For debugging purposes
+    human_index = dict(
         zip(word_index.values(),
             word_index.keys()))  # Swap the position of key-value to make search easier.(search by key)
 
@@ -55,7 +56,7 @@ def main():
 
     # print(len(test_data[0]), len(test_data[1]))  # Now all have the same length
 
-    print(decode_review(test_data[0], reverse_word_index))  # Print the human readable sentence
+    # print(decoder(test_data[0], human_index))  # Print the human readable sentence
 
     # print("Dimension", train_data.shape[0], " Test ", train_data.shape[1])
 
@@ -202,7 +203,7 @@ def evaluator(model, x_train, y_train, test_data, test_labels):
     print("Test loss, Test accuracy ", results_test)
 
 
-def decode_review(text, reverse_word_index):  # Return the human readable words
+def decoder(text, reverse_word_index):  # Return the human readable words
     return " ".join([reverse_word_index.get(i, "?") for i in text])
 
 
