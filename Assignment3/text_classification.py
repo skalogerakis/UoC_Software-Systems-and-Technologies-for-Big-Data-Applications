@@ -5,7 +5,6 @@
 # Sequential -> linear stack of layers. Dense is the most common layer
 import tensorflow as tf
 from tensorflow import keras  # Keras high-level API of tensorflow
-import numpy as np
 from tensorflow.python.keras.datasets import imdb
 import matplotlib.pyplot as plt
 
@@ -49,9 +48,9 @@ def main():
     # print(len(test_data[0]), len(test_data[1]))  # At a first glance sentences are of different length. Must change that and all should have the same length
 
     # Data preprocessing the easy way
-    train_data = keras.preprocessing.sequence.pad_sequences(train_data, value=word_index["<PAD>"], dtype=np.uint8,
+    train_data = keras.preprocessing.sequence.pad_sequences(train_data, value=word_index["<PAD>"], dtype=int,
                                                             padding="post", maxlen=maxlen)
-    test_data = keras.preprocessing.sequence.pad_sequences(test_data, value=word_index["<PAD>"], dtype=np.uint8,
+    test_data = keras.preprocessing.sequence.pad_sequences(test_data, value=word_index["<PAD>"], dtype=int,
                                                            padding="post", maxlen=maxlen)
 
     # print(len(test_data[0]), len(test_data[1]))  # Now all have the same length
@@ -149,7 +148,7 @@ def CNN(maxlen, x_train, y_train, x_val, y_val, test_data, test_labels):
     # model.add(keras.layers.Conv1D(filters=128, kernel_size=5, activation='relu'))
     # model.add(keras.layers.Conv1D(filters=16, kernel_size=5))
     # model.add(keras.layers.Conv1D(filters=16, kernel_size=5, activation='tanh'))
-    model.add(keras.layers.Conv1D(filters=32, kernel_size=5, activation='relu'))    # Generally speaking, relu function performs better than the others, as we can see from the results and
+    model.add(keras.layers.Conv1D(filters=32, kernel_size=10, activation='relu'))    # Generally speaking, relu function performs better than the others, as we can see from the results and
 
     # model.add(keras.layers.GlobalAveragePooling1D())  # Unlike the previous model, GlobalAverage performs  worse
     model.add(keras.layers.GlobalMaxPooling1D())
@@ -161,8 +160,8 @@ def CNN(maxlen, x_train, y_train, x_val, y_val, test_data, test_labels):
     model.summary()
 
 
-    # fitModel = model.fit(x_train, y_train, epochs=10, batch_size=100, validation_data=(x_val, y_val), verbose=1)
-    fitModel = model.fit(x_train, y_train, epochs=10, batch_size=50, validation_data=(x_val, y_val), verbose=1)
+    # fitModel = model.fit(x_train, y_train, epochs=10, batch_size=100, validation_data=(x_val, y_val), verbose=1)  #Overfitting
+    fitModel = model.fit(x_train, y_train, epochs=5, batch_size=512, validation_data=(x_val, y_val), verbose=1)
 
     evaluator(model, x_train, y_train, test_data, test_labels)
 
